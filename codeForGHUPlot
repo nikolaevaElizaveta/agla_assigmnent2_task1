@@ -1,0 +1,541 @@
+//Elizaveta Nikolaeva
+// e.nikolaeva@innopolis.university
+#include <iostream>
+#include <cstdio>
+#include <cmath>
+#include <iomanip>
+//#include "gnuplot_i.hpp"
+
+
+#ifdef WIN32
+#define GNUPLOT_NAME "C:\\gnuplot\\bin\\gnuplot -persist"
+#endif
+
+class Matrix {
+public:
+    int n,m;
+public:
+    double** matrix;
+    Matrix(int n, int m) {
+        this->n = n;
+        this->m = m;
+        matrix = new double*[n];
+        for(int i = 0; i < n; ++i) {
+            matrix[i] = new double[m]();
+        }
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, Matrix& matrix) {
+        for (int i = 0; i < matrix.n; i++) {
+            for (int j = 0; j < matrix.m; j++) {
+//                if (std::abs(matrix.matrix[i][j]) == 0) {
+//                    matrix.matrix[i][j] = 0;
+//                }
+                out << std::fixed << std::setprecision(4) << matrix.matrix[i][j] << " ";
+            }
+            if (i!=matrix.n-1 ) {
+                out << "\n";
+            }
+        }
+        return out;
+    }
+
+    friend std::istream& operator>>(std::istream& in, Matrix& matrix) {
+        for (int i = 0; i < matrix.n; i++) {
+            for (int j = 0; j < matrix.m; j++) {
+                in >> matrix.matrix[i][j];
+//                if (std::abs(matrix.matrix[i][j]) == 0) {
+//                    matrix.matrix[i][j] = 0;
+//                }
+            }
+        }
+        return in;
+    }
+
+    Matrix& operator=(const Matrix& second) {
+        if (this != &second) {
+            for(int i = 0; i < n; ++i) {
+                delete[] matrix[i];
+            }
+            delete[] matrix;
+            n = second.n;
+            m = second.m;
+            matrix = new double*[n];
+            for(int i = 0; i < n; ++i) {
+                matrix[i] = new double[m];
+                for(int j = 0; j < m; ++j) {
+                    matrix[i][j] = second.matrix[i][j];
+//                    if (std::abs(matrix[i][j]) == 0) {
+//                        matrix[i][j] = 0;
+//                    }
+                }
+            }
+        }
+        return *this;
+    }
+
+    Matrix operator+(const Matrix& second) const {
+        Matrix matD(second.n, second.m);
+        for (int i = 0; i < this->n; i++) {
+            for(int j = 0; j < second.m; j++) {
+                matD.matrix[i][j] = this->matrix[i][j] + second.matrix[i][j];
+//                if (std::abs(matD.matrix[i][j]) == 0) {
+//                    matD.matrix[i][j] = 0;
+//                }
+            }
+        }
+        return matD;
+    }
+
+    Matrix operator-(const Matrix& second) const {
+        Matrix matD(second.n, second.m);
+        for (int i = 0; i < this->n; i++) {
+            for(int j = 0; j < second.m; j++) {
+                matD.matrix[i][j] = this->matrix[i][j] - second.matrix[i][j];
+//                if (std::abs(matD.matrix[i][j]) == 0) {
+//                    matD.matrix[i][j] = 0;
+//                }
+            }
+        }
+        return matD;
+    }
+
+    Matrix operator*(const Matrix& second) const {
+        Matrix matD(this->n, second.m);
+        for (int i = 0; i < this->n; i++) {
+            for (int j = 0; j < second.m; j++) {
+                matD.matrix[i][j] = 0;
+            }
+        }
+        for (int i = 0; i < this->n; i++) {
+            for (int j = 0; j < second.m; j++) {
+                for (int k = 0; k < this->m; k++) {
+                    matD.matrix[i][j] += this->matrix[i][k] * second.matrix[k][j];
+                }
+//                if (std::abs(matD.matrix[i][j]) == 0) {
+//                    matD.matrix[i][j] = 0;
+//                }
+            }
+        }
+        return matD;
+    }
+
+    Matrix transpose() const{
+        Matrix T(this->m, this->n);
+        for (int i = 0; i < this->m; i++) {
+            for (int j = 0; j < this->n; j++) {
+                T.matrix[i][j] = this->matrix[j][i];
+            }
+        }
+        return T;
+    }
+
+};
+
+class SquareMatrix: public Matrix {
+public:
+    SquareMatrix(int n): Matrix(n,n) { }
+
+    SquareMatrix operator+(const SquareMatrix second) const {
+        const Matrix& m1 = *this;
+        const Matrix& m2 = second;
+        Matrix result = m1 + m2;
+        return static_cast<const SquareMatrix&>(result);
+    }
+    SquareMatrix operator-(const SquareMatrix second) const {
+        const Matrix& m1 = *this;
+        const Matrix& m2 = second;
+        Matrix result = m1 - m2;
+        return static_cast<const SquareMatrix&>(result);
+    }
+    SquareMatrix operator*(const SquareMatrix second) const {
+        const Matrix& m1 = *this;
+        const Matrix& m2 = second;
+        Matrix result = m1 * m2;
+        return static_cast<const SquareMatrix&>(result);
+    }
+};
+
+class IdentityMatrix : public SquareMatrix {
+public:
+    IdentityMatrix(int n) : SquareMatrix(n) {
+        for (int i = 0; i<n; i++) {
+            for (int j = 0 ; j<n; j++) {
+                if (i==j) {
+                    this->matrix[i][j] = 1;
+                } else {
+                    this->matrix[i][j] = 0;
+                }
+            }
+        }
+    }
+};
+
+class EliminationMatrix: public IdentityMatrix {
+public:
+    EliminationMatrix(int n, int i, int j, double eliminationElement) : IdentityMatrix(n) {
+        for (int a = 0; a<n; a++) {
+            for (int b = 0; b<n; b++) {
+                if (a==b) {
+                    this->matrix[a][b] = 1;
+                } else {
+                    this->matrix[a][b] = 0;
+                }
+            }
+        }
+        this->matrix[i][j] = eliminationElement;
+    };
+
+};
+
+class PermutationMatrix: public IdentityMatrix {
+public:
+    PermutationMatrix (int n, int i, int j) : IdentityMatrix(n) {
+
+        for (int a = 0; a<n; a++) {
+            for (int b = 0; b<n; b++) {
+                if (a==b) {
+                    this->matrix[a][b] = 1;
+                } else {
+                    this->matrix[a][b] = 0;
+                }
+            }
+        }
+
+        for (int t = 0; t<n; t++) {
+            std::swap(matrix[i][t], matrix[j][t]);
+        }
+    }
+};
+
+bool checkREF(Matrix A, int n_forA) {
+
+    for (int i = 1; i < n_forA; i++) {
+        for (int j = 0; j < i; j++) {
+            if (A.matrix[i][j] != 0) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool checkRREF(Matrix A, int n) {
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 1; j < n; j++) {
+            if (A.matrix[i][j] != 0) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool checkColumn(int rowPointer, int columnPivot, Matrix A, int n_forA) {
+
+    for (int i = rowPointer+1; i < n_forA; i++) {
+        if (A.matrix[i][columnPivot] != 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool checkColumnSecond(int rowPivot, int columnPointer, Matrix A, int n_forA) {
+
+    for (int i = rowPivot; i >= 0; i--) {
+        if (A.matrix[i][columnPointer] != 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+class ColumnVector: public Matrix {
+public:
+    ColumnVector(int nForB) : Matrix(nForB,1) { }
+
+    ColumnVector operator+(const ColumnVector& second) const {
+        const Matrix& m1 = *this;
+        const Matrix& m2 = second;
+        Matrix result = m1 + m2;
+        return static_cast<const ColumnVector&>(result);
+    }
+
+    ColumnVector operator-(const ColumnVector& second) const {
+        const Matrix& m1 = *this;
+        const Matrix& m2 = second;
+        Matrix result = m1 - m2;
+        return static_cast<const ColumnVector&>(result);
+    }
+
+    ColumnVector operator*(const SquareMatrix& second) const {
+        const Matrix& m1 = *this;
+        const Matrix& m2 = second;
+        Matrix result = m1 * m2;
+        return static_cast<const ColumnVector&>(result);
+    }
+
+    double operator*(const ColumnVector& second) const {
+        double result=0;
+        for (int i = 0; i < n; i++) {
+            result += this->matrix[i][0]*second.matrix[i][0];
+        }
+        return result;
+    }
+
+    void normalization() {
+        double length = 0.00;
+        for (int y = 0; y<n; y++) {
+            length += matrix[y][0]*matrix[y][0];
+        }
+        length = sqrt(length);
+        for (int i = 0; i<n; i++) {
+            matrix[i][0] = matrix[i][0]/length;
+        }
+    }
+
+    ColumnVector& operator=(Matrix second) {
+        if (this != &second) {
+            for(int i = 0; i < n; ++i) {
+                delete[] matrix[i];
+            }
+            delete[] matrix;
+            n = second.n;
+            m = second.m;
+            matrix = new double*[n];
+            for(int i = 0; i < n; ++i) {
+                matrix[i] = new double[m];
+                for(int j = 0; j < m; ++j) {
+                    matrix[i][j] = second.matrix[i][j];
+
+                    if ( ( roundf(this->matrix[i][j] * 100) / 100) == -0.00) {
+                        this->matrix[i][j] = 0.00;
+                    }
+
+                }
+            }
+        }
+        return *this;
+    }
+};
+
+void fillToIdentity(SquareMatrix A, int n_forA){
+    for (int i = 0; i<n_forA; i++) {
+        for (int j = 0 ; j<n_forA; j++) {
+            if (i==j) {
+                A.matrix[i][j] = 1;
+            } else {
+                A.matrix[i][j] = 0;
+            }
+        }
+    }
+}
+
+SquareMatrix inverseMethod(int n_forA, SquareMatrix A ) {
+
+    SquareMatrix rightPartAug(n_forA);
+    fillToIdentity(rightPartAug, n_forA);
+
+    int rowToZero = 1;
+    int columnToZero = 0;
+    int rowPointer=0;
+
+    while(!checkREF(A, n_forA)) {
+
+        double max = -1.00;
+        int maxIndex;
+
+        for (int i = rowPointer; i < n_forA; i++) {
+            if (fabs(A.matrix[i][columnToZero]) > max) {
+                max=fabs(A.matrix[i][columnToZero]);
+                maxIndex = i;
+            }
+        }
+
+        if (maxIndex != rowToZero - 1) {
+
+            PermutationMatrix P(n_forA, maxIndex, rowPointer);
+            A = P * A;
+            rightPartAug = P * rightPartAug;
+
+        }
+
+        while (!checkColumn(rowPointer, columnToZero, A, n_forA)) {
+
+            if (rowToZero!=columnToZero) {
+
+                double eliminationElement = (A.matrix[rowToZero][columnToZero] / A.matrix[columnToZero][columnToZero]) * (-1);
+                EliminationMatrix E(n_forA, rowToZero, columnToZero, eliminationElement);
+                A = E * A;
+                rightPartAug = E * rightPartAug;
+
+            }
+
+            rowToZero++;
+
+        }
+
+        columnToZero++;
+        rowToZero= rowPointer + 1;
+        rowPointer++;
+
+    }
+
+    rowToZero = n_forA-2;
+    columnToZero = n_forA-1;
+    rowPointer = n_forA-2;
+
+    while(!checkRREF(A, n_forA) && columnToZero>=0 && rowToZero>=0) {
+
+        while (!checkColumnSecond(rowToZero, columnToZero, A, n_forA)) {
+
+            if (rowToZero!=columnToZero) {
+
+                double eliminationElement = (A.matrix[rowToZero][columnToZero] / A.matrix[columnToZero][columnToZero]) * (-1);
+                EliminationMatrix E(n_forA, rowToZero, columnToZero, eliminationElement);
+                A = E * A;
+                rightPartAug = E * rightPartAug;
+
+            }
+
+            rowToZero--;
+
+        }
+
+        rowPointer--;
+        columnToZero--;
+
+        rowToZero = rowPointer;
+
+    }
+
+    double temporary;
+    for (int w = 0; w<n_forA; w++) {
+        temporary = A.matrix[w][w];
+        A.matrix[w][w] = A.matrix[w][w] / temporary;
+        for (int h = 0; h<n_forA; h++) {
+            if (rightPartAug.matrix[w][h]!=0) {
+                rightPartAug.matrix[w][h] = rightPartAug.matrix[w][h] / temporary;
+            }
+//            if (fabs(rightPartAug.matrix[w][h])<0.01) {
+//                rightPartAug.matrix[w][h] = 0;
+//            }
+        }
+    }
+
+    return rightPartAug;
+    //std::cout<<"result:"<<std::endl;
+    //std::cout<<rightPartAug<<std::endl;
+
+}
+
+Matrix casting(int n, SquareMatrix square) {
+    Matrix matrix(n,n);
+    for (int i = 0; i<n; i++) {
+        for (int j = 0; j<n; j++) {
+            matrix.matrix[i][j] = square.matrix[i][j];
+        }
+    }
+    return matrix;
+}
+
+
+int main() {
+    FILE * pipe = _popen(GNUPLOT_NAME, "w");
+
+    int n, degreeOfPolynomial;
+    std::cin >> n;
+
+    ColumnVector b(n);
+    Matrix ForGNU(n,1);
+
+    double tempT[n];
+    for (int i = 0; i < n; i++) {
+        std::cin>>tempT[i];
+        std::cin>>b.matrix[i][0];
+        ForGNU.matrix[i][0] = tempT[i];
+    }
+
+    std::cin>>degreeOfPolynomial;
+    int m = degreeOfPolynomial+1;
+    Matrix A(n, m);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            A.matrix[i][j]=pow(tempT[i],j);
+        }
+    }
+
+    std::cout<<"A:"<<std::endl;
+    std::cout<<A<<std::endl;
+
+    Matrix TransposedA(m, n);
+    TransposedA = A.transpose();
+
+    Matrix TransposedByInitial(m,m);
+    TransposedByInitial = TransposedA * A;
+    std::cout<<"A_T*A:"<<std::endl;
+    std::cout<<TransposedByInitial<<std::endl;
+
+    SquareMatrix SquareTransposedByInitial(m);
+    SquareTransposedByInitial.Matrix::operator=(TransposedByInitial);
+
+    SquareMatrix InverseTr(m);
+    InverseTr = inverseMethod(m, SquareTransposedByInitial);
+
+    std::cout<<"(A_T*A)^-1:"<<std::endl;
+    std::cout<<InverseTr<<std::endl;
+    Matrix helper(m,m);
+    helper = casting(m, InverseTr);
+
+    ColumnVector temp(n);
+    temp = TransposedA * b;
+
+    std::cout<<"A_T*b:"<<std::endl;
+    std::cout<<temp<<std::endl;
+
+    ColumnVector result(n);
+    result = helper * temp;
+
+    std::cout<<"x~:"<<std::endl;
+    std::cout<<result;
+
+    if (pipe!=NULL) {
+        //input is the following:
+        //3 - number of points
+        //points : t " " b
+        //-2 1
+        //0 2
+        //2 4
+        //1 - degree of polynomial
+        Matrix x(n, 1);
+        Matrix y(n, 1);
+        x = ForGNU;
+        y = b;
+
+        //x=b;
+        //y=ForGNU;
+        fprintf(pipe, "set title 'Least Squares Approximation'\n");
+        fprintf(pipe, "set xlabel 'x'\n");
+        fprintf(pipe, "set ylabel 'y'\n");
+        fprintf(pipe, "plot '-' with points title 'Data', '-' with lines title 'Approximation'\n");
+        for (int i = 0; i < n; i++) {
+            fprintf(pipe, "%f %f\n", x.matrix[i][0], y.matrix[i][0]);
+        }
+        fprintf(pipe, "e\n");
+        for (double xi = x.matrix[0][0]; xi <= x.matrix[n-1][0]; xi += 0.01) {
+            double yi = result.matrix[0][0] + result.matrix[1][0] * xi;
+            fprintf(pipe, "%f %f\n", xi, yi);
+        }
+        fprintf(pipe, "e\n");
+        fflush(pipe);
+        pclose(pipe);
+    }
+
+    return 0;
+}
