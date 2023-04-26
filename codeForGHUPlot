@@ -4,11 +4,12 @@
 #include <cstdio>
 #include <cmath>
 #include <iomanip>
-//#include "gnuplot_i.hpp"
-
+#include <random>
 
 #ifdef WIN32
 #define GNUPLOT_NAME "C:\\gnuplot\\bin\\gnuplot -persist"
+#else
+#define GNUPLOT_NAME "gnuplot -persist"
 #endif
 
 class Matrix {
@@ -28,9 +29,6 @@ public:
     friend std::ostream& operator<<(std::ostream& out, Matrix& matrix) {
         for (int i = 0; i < matrix.n; i++) {
             for (int j = 0; j < matrix.m; j++) {
-//                if (std::abs(matrix.matrix[i][j]) == 0) {
-//                    matrix.matrix[i][j] = 0;
-//                }
                 out << std::fixed << std::setprecision(4) << matrix.matrix[i][j] << " ";
             }
             if (i!=matrix.n-1 ) {
@@ -44,9 +42,6 @@ public:
         for (int i = 0; i < matrix.n; i++) {
             for (int j = 0; j < matrix.m; j++) {
                 in >> matrix.matrix[i][j];
-//                if (std::abs(matrix.matrix[i][j]) == 0) {
-//                    matrix.matrix[i][j] = 0;
-//                }
             }
         }
         return in;
@@ -65,9 +60,6 @@ public:
                 matrix[i] = new double[m];
                 for(int j = 0; j < m; ++j) {
                     matrix[i][j] = second.matrix[i][j];
-//                    if (std::abs(matrix[i][j]) == 0) {
-//                        matrix[i][j] = 0;
-//                    }
                 }
             }
         }
@@ -79,9 +71,6 @@ public:
         for (int i = 0; i < this->n; i++) {
             for(int j = 0; j < second.m; j++) {
                 matD.matrix[i][j] = this->matrix[i][j] + second.matrix[i][j];
-//                if (std::abs(matD.matrix[i][j]) == 0) {
-//                    matD.matrix[i][j] = 0;
-//                }
             }
         }
         return matD;
@@ -92,9 +81,6 @@ public:
         for (int i = 0; i < this->n; i++) {
             for(int j = 0; j < second.m; j++) {
                 matD.matrix[i][j] = this->matrix[i][j] - second.matrix[i][j];
-//                if (std::abs(matD.matrix[i][j]) == 0) {
-//                    matD.matrix[i][j] = 0;
-//                }
             }
         }
         return matD;
@@ -112,9 +98,6 @@ public:
                 for (int k = 0; k < this->m; k++) {
                     matD.matrix[i][j] += this->matrix[i][k] * second.matrix[k][j];
                 }
-//                if (std::abs(matD.matrix[i][j]) == 0) {
-//                    matD.matrix[i][j] = 0;
-//                }
             }
         }
         return matD;
@@ -423,16 +406,10 @@ SquareMatrix inverseMethod(int n_forA, SquareMatrix A ) {
             if (rightPartAug.matrix[w][h]!=0) {
                 rightPartAug.matrix[w][h] = rightPartAug.matrix[w][h] / temporary;
             }
-//            if (fabs(rightPartAug.matrix[w][h])<0.01) {
-//                rightPartAug.matrix[w][h] = 0;
-//            }
         }
     }
 
     return rightPartAug;
-    //std::cout<<"result:"<<std::endl;
-    //std::cout<<rightPartAug<<std::endl;
-
 }
 
 Matrix casting(int n, SquareMatrix square) {
@@ -447,7 +424,11 @@ Matrix casting(int n, SquareMatrix square) {
 
 
 int main() {
-    FILE * pipe = _popen(GNUPLOT_NAME, "w");
+#ifdef WIN32
+    FILE* pipe = _popen(GNUPLOT_NAME, "w");
+#else
+    FILE* pipe = popen(GNUPLOT_NAME, "w");
+#endif
 
     int n, degreeOfPolynomial;
     std::cin >> n;
@@ -505,37 +486,58 @@ int main() {
     std::cout<<"x~:"<<std::endl;
     std::cout<<result;
 
-    if (pipe!=NULL) {
-        //input is the following:
-        //3 - number of points
-        //points : t " " b
-        //-2 1
-        //0 2
-        //2 4
-        //1 - degree of polynomial
-        Matrix x(n, 1);
-        Matrix y(n, 1);
-        x = ForGNU;
-        y = b;
+    //example is for the polynomial of the 3rd degree
+    //4 - number of points
+    //1 4
+    //2 18
+    //-1 2
+    //-2 -2
+    //3 - degree of the polynomial
+    double coefZero = result.matrix[0][0];
+    double coefOne = result.matrix[1][0];
+    double coefTwo = result.matrix[2][0];
+    double coefThree = result.matrix[3][0];
 
-        //x=b;
-        //y=ForGNU;
-        fprintf(pipe, "set title 'Least Squares Approximation'\n");
-        fprintf(pipe, "set xlabel 'x'\n");
-        fprintf(pipe, "set ylabel 'y'\n");
-        fprintf(pipe, "plot '-' with points title 'Data', '-' with lines title 'Approximation'\n");
-        for (int i = 0; i < n; i++) {
-            fprintf(pipe, "%f %f\n", x.matrix[i][0], y.matrix[i][0]);
-        }
-        fprintf(pipe, "e\n");
-        for (double xi = x.matrix[0][0]; xi <= x.matrix[n-1][0]; xi += 0.01) {
-            double yi = result.matrix[0][0] + result.matrix[1][0] * xi;
-            fprintf(pipe, "%f %f\n", xi, yi);
-        }
-        fprintf(pipe, "e\n");
-        fflush(pipe);
-        pclose(pipe);
+    int intervalA = -10;
+    int intervalB = 10;
+
+    fprintf(pipe, "plot [%d:%d] %lf*x**3 + %lf*x**2 + %lf*x**1 + %lf*x**0 , '-' using 1:2 with points\n", intervalA, intervalB, coefThree, coefTwo, coefOne, coefZero);
+
+    for (int x = intervalA; x < intervalB; x++) {
+        double y = pow(x,3) * coefThree + pow(x,2) * coefTwo + pow(x,1) * coefOne + pow(x,0) * coefZero;
+        fprintf(pipe, "%d\t%f\n", x, y);
+        //if we will print x and y in the console, this is what will be obtained
+        //x = -10 y = -1162.0000
+        //x = -9 y = -832.6667
+        //x = -8 y = -572.0000
+        //x = -7 y = -372.0000
+        //x = -6 y = -224.6667
+        //x = -5 y = -122.0000
+        //x = -4 y = -56.0000
+        //x = -3 y = -18.6667
+        //x = -2 y = -2.0000
+        //x = -1 y = 2.0000
+        //x = 0 y = 1.3333
+        //x = 1 y = 4.0000
+        //x = 2 y = 18.0000
+        //x = 3 y = 51.3333
+        //x = 4 y = 112.0000
+        //x = 5 y = 208.0000
+        //x = 6 y = 347.3333
+        //x = 7 y = 538.0000
+        //x = 8 y = 788.0000
+        //x = 9 y = 1105.3333
     }
+
+    fprintf(pipe, "e\n");
+    fflush(pipe);
+
+
+#ifdef WIN32
+        _pclose(pipe);
+    #else
+        pclose(pipe);
+    #endif
 
     return 0;
 }
